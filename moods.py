@@ -1,6 +1,8 @@
 import re
 import os
 import spacy
+import gzip
+import numpy as np
 nlp = spacy.load("en_core_web_sm")
 
 # Single Square brackets (excludes double brackets)
@@ -27,7 +29,30 @@ def parse_raw(txt):
 
     return parsed
 
+def clean_words(doc, pos=['VERB', 'NOUN', 'PROPN', 'ADJ', 'ADV']):
+    l = []
+    for word in doc:
+        if not word.is_stop and (word.pos_ in pos):
+            l.append(word.lemma_.lower())
+    return l
 
+def cleaned_bow_iter(fname, dictionary, include_name=True, min_tokens_per_doc=0):
+    ''' Return key, bag-of-words list from a preprocessed file (see preprocess-bills.ipynb for preprocessing code)'''
+    with gzip.open(fname, mode='r') as f:
+        for line in f.readlines():
+            name, text = line.decode('utf-8').strip('\n').split('\t')
+            bow = dictionary.doc2bow(text.split(' '))
+            if include_name:
+                yield name, bow
+            else:
+                yield bow
+            
+def cleaned_txts_iter(fname):
+    ''' Return key, [list,of,words] list from a preprocessed file'''
+    with gzip.open(fname, mode='r') as f:
+        for line in f.readlines():
+            name, text = line.decode('utf-8').strip('\n').split('\t')
+            yield name, text.split(' ')
 
 class Bill():
     
@@ -35,16 +60,16 @@ class Bill():
         
         # Parse metadata from filename
         fname = os.path.split(path)[-1]
-        name = os.path.splitext(fname)[0]
+        self.name = os.path.splitext(fname)[0]
 
-        self.congress, sponsor, self.num = name.split('_')
+        self.congress, sponsor, self.num = self.name.split('_')
         self.sponsor = sponsor.replace('-', '.')
         
         with open(path) as f:
             self._raw = f.read()
       
     def text(self):
-        txt = parse_raw(self._raw)
+        txt = parse_raw(self._raw).strip()
         return txt
             
     def lines(self, nlp_doc=False):
