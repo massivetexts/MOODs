@@ -54,21 +54,34 @@ def clean_words(doc, pos=['VERB', 'NOUN', 'PROPN', 'ADJ', 'ADV']):
 
 def cleaned_bow_iter(fname, dictionary, include_name=True, min_tokens_per_doc=0):
     ''' Return key, bag-of-words list from a preprocessed file (see preprocess-bills.ipynb for preprocessing code)'''
-    with gzip.open(fname, mode='r') as f:
-        for line in f.readlines():
-            name, text = line.decode('utf-8').strip('\n').split('\t')
-            bow = dictionary.doc2bow(text.split(' '))
-            if include_name:
-                yield name, bow
-            else:
-                yield bow
+    txts = cleaned_txts_iter(fname, include_name, min_tokens_per_doc)
+    for txt in txts:
+        if include_name:
+            name, txt = txt
+        bow = dictionary.doc2bow(txt)
+        if include_name:
+            yield name, bow
+        else:
+            yield bow
             
-def cleaned_txts_iter(fname):
-    ''' Return key, [list,of,words] list from a preprocessed file'''
+def cleaned_txts_iter(fname,  include_name=True, min_tokens_per_doc=0):
+    '''
+    Return (key, [list,of,words]) list from a preprocessed file.
+    
+    include_name=False will return [list, of, words]
+    '''
     with gzip.open(fname, mode='r') as f:
         for line in f.readlines():
             name, text = line.decode('utf-8').strip('\n').split('\t')
-            yield name, text.split(' ')
+            txt = text.split()
+            
+            if len(txt) < min_tokens_per_doc:
+                continue
+
+            if include_name:
+                yield name, txt
+            else:
+                yield txt
 
 class Bill():
     
