@@ -3,6 +3,9 @@ import os
 import spacy
 import gzip
 import numpy as np
+from scipy.stats import entropy
+from numpy.linalg import norm
+
 nlp = spacy.load("en_core_web_sm")
 
 # Single Square brackets (excludes double brackets)
@@ -13,6 +16,19 @@ DSQR_RE = r'\[\[.*?\]\]'
 SANG_RE = r'(?<=[^\<])\<[^\<].*?\>(?=[^\>])'
 # Double Angle brackets
 DANG_RE = r'\<\<.*?\>\>'
+
+def JSD(P, Q, dist=False):
+    ''' Jenson-Shannon Divergence - a symmetrical update to KL Divergence.
+    
+    dist=True returns JS distance.'''
+    _P = P / norm(P, ord=1)
+    _Q = Q / norm(Q, ord=1)
+    _M = 0.5 * (_P + _Q)
+    jsdivergence = 0.5 * (entropy(_P, _M) + entropy(_Q, _M))
+    if dist:
+        return np.sqrt(jsdivergence)
+    else:
+        return jsdivergence
 
 def parse_raw(txt):
     # Strip Bracketed Junk
